@@ -29,9 +29,19 @@ function finiteNumber(value) {
 }
 
 function getSingleResourceDisplay(observation) {
-  const coding =
-    observation.code?.coding?.find((item) => item.display || item.code) ||
-    observation.code?.coding?.[0];
+  const codings = observation.code?.coding || [];
+  const loincCoding = codings.find(
+    (item) => item.system === "http://loinc.org",
+  );
+  const codingWithDisplay = codings.find((item) => item.display?.trim());
+  const coding = loincCoding || codingWithDisplay || codings[0];
+  const loinc = loincCoding?.code || "—";
+  const name =
+    observation.code?.text?.trim() ||
+    loincCoding?.display?.trim() ||
+    codingWithDisplay?.display?.trim() ||
+    (loincCoding?.code ? `LOINC ${loincCoding.code}` : null) ||
+    (coding?.code ? `Lab result (${coding.code})` : "Laboratory observation");
   const quantity = observation.valueQuantity;
   const value = quantity
     ? (quantity.value ?? "—")
@@ -56,12 +66,8 @@ function getSingleResourceDisplay(observation) {
   }
 
   return {
-    name:
-      observation.code?.text || coding?.display || "Unnamed laboratory result",
-    loinc:
-      observation.code?.coding?.find(
-        (item) => item.system === "http://loinc.org",
-      )?.code || "—",
+    name,
+    loinc,
     result: value,
     numericResult: finiteNumber(quantity?.value ?? observation.valueInteger),
     units: quantity?.unit || quantity?.code || "—",
