@@ -28,6 +28,68 @@ function finiteNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function codeableConceptLabel(concept) {
+  if (!concept) return null;
+  const coding =
+    concept.coding?.find((item) => item.display?.trim()) ||
+    concept.coding?.find((item) => item.code);
+  return (
+    concept.text?.trim() || coding?.display?.trim() || coding?.code || null
+  );
+}
+
+function quantityLabel(quantity) {
+  if (!quantity) return null;
+  const value = quantity.value ?? "—";
+  const unit = quantity.unit || quantity.code;
+  return unit ? `${value} ${unit}` : String(value);
+}
+
+function observationValueLabel(observation) {
+  const quantity = quantityLabel(observation.valueQuantity);
+  if (quantity) return quantity;
+
+  const codeableConcept = codeableConceptLabel(
+    observation.valueCodeableConcept,
+  );
+  if (codeableConcept) return codeableConcept;
+
+  if (observation.valueString) return observation.valueString;
+  if (observation.valueBoolean !== undefined) {
+    return observation.valueBoolean.toString();
+  }
+  if (observation.valueInteger !== undefined) {
+    return observation.valueInteger.toString();
+  }
+  if (observation.valueDateTime) return formatDate(observation.valueDateTime);
+  if (observation.valueTime) return observation.valueTime;
+
+  const valueRange = observation.valueRange;
+  if (valueRange) {
+    const low = quantityLabel(valueRange.low);
+    const high = quantityLabel(valueRange.high);
+    if (low || high) return `${low || "—"}–${high || "—"}`;
+  }
+
+  const ratio = observation.valueRatio;
+  if (ratio) {
+    const numerator = quantityLabel(ratio.numerator);
+    const denominator = quantityLabel(ratio.denominator);
+    if (numerator || denominator) {
+      return `${numerator || "—"} / ${denominator || "—"}`;
+    }
+  }
+
+  const period = observation.valuePeriod;
+  if (period) {
+    const start = period.start ? formatDate(period.start) : "—";
+    const end = period.end ? formatDate(period.end) : "—";
+    return `${start}–${end}`;
+  }
+
+  return "—";
+}
+
 function getSingleResourceDisplay(observation) {
   const codings = observation.code?.coding || [];
   const loincCoding = codings.find(
@@ -41,16 +103,9 @@ function getSingleResourceDisplay(observation) {
     loincCoding?.display?.trim() ||
     codingWithDisplay?.display?.trim() ||
     (loincCoding?.code ? `LOINC ${loincCoding.code}` : null) ||
-    (coding?.code ? `Lab result (${coding.code})` : "Laboratory observation");
+    (coding?.code ? `Lab result (${coding.code})` : "Test name unavailable");
   const quantity = observation.valueQuantity;
-  const value = quantity
-    ? (quantity.value ?? "—")
-    : observation.valueString ||
-      observation.valueCodeableConcept?.text ||
-      observation.valueBoolean?.toString() ||
-      observation.valueInteger?.toString() ||
-      observation.valueDateTime ||
-      "—";
+  const value = observationValueLabel(observation);
   const range = observation.referenceRange?.[0];
   const referenceLow = finiteNumber(range?.low?.value);
   const referenceHigh = finiteNumber(range?.high?.value);
@@ -98,6 +153,10 @@ function getResourceDisplay(observation) {
       valueBoolean: component.valueBoolean,
       valueInteger: component.valueInteger,
       valueDateTime: component.valueDateTime,
+      valueTime: component.valueTime,
+      valueRange: component.valueRange,
+      valueRatio: component.valueRatio,
+      valuePeriod: component.valuePeriod,
       referenceRange: component.referenceRange || observation.referenceRange,
     }),
   );
