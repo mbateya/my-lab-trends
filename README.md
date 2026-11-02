@@ -39,7 +39,7 @@ Requirements: Node.js 20.19+ or 22.12+ and npm.
    npm run dev
    ```
 
-6. Open `http://localhost:5173`, select **Connect to Epic Sandbox**, and sign in with an Epic sandbox MyChart test account. The app should return to `/callback`, load patient context and laboratory Observations, then display them in the table.
+6. Open `http://localhost:5173`, select **Connect to Epic Sandbox**, and sign in with an Epic sandbox MyChart test account. The app should return to `/callback`, load patient context and laboratory Observations, then display them in the table. Trend charts appear when a numeric test has results on multiple dates; tests without repeat measurements remain in the table and are not presented as a trend.
 
 The app requests `launch/patient patient/Observation.rs` with SMART v2, or `launch/patient patient/Observation.read` with SMART v1. [Epic's scope guidance](https://fhir.epic.com/Documentation?docId=patientfacingfhirapps&section=AutomaticClientDistribution) describes v1 `.read` and v2 `.rs` scope formats. The client requires S256 PKCE; it stops before redirecting if Epic's SMART discovery metadata does not advertise S256. No client secret is used.
 

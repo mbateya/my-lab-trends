@@ -22,6 +22,12 @@ function clearStoredSmartState() {
   }
 }
 
+function finiteNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function getSingleResourceDisplay(observation) {
   const coding =
     observation.code?.coding?.find((item) => item.display || item.code) ||
@@ -36,6 +42,8 @@ function getSingleResourceDisplay(observation) {
       observation.valueDateTime ||
       "—";
   const range = observation.referenceRange?.[0];
+  const referenceLow = finiteNumber(range?.low?.value);
+  const referenceHigh = finiteNumber(range?.high?.value);
   let reference = "—";
   if (range?.text) reference = range.text;
   else if (range) {
@@ -55,8 +63,11 @@ function getSingleResourceDisplay(observation) {
         (item) => item.system === "http://loinc.org",
       )?.code || "—",
     result: value,
+    numericResult: finiteNumber(quantity?.value ?? observation.valueInteger),
     units: quantity?.unit || quantity?.code || "—",
     reference,
+    referenceLow,
+    referenceHigh,
     date:
       observation.effectiveDateTime ||
       observation.effectivePeriod?.start ||
@@ -95,6 +106,218 @@ function formatDate(date) {
     dateStyle: "medium",
     ...(dateOnly ? { timeZone: "UTC" } : {}),
   }).format(parsed);
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat(undefined, {
+    maximumSignificantDigits: 4,
+  }).format(value);
+}
+
+function formatAxisDate(value) {
+  const date = new Date(value);
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? { timeZone: "UTC" }
+      : {}),
+  }).format(date);
+}
+
+function buildTrendSeries(labs) {
+  const groups = new Map();
+  for (const lab of labs) {
+    const timestamp = Date.parse(lab.date);
+    if (!Number.isFinite(lab.numericResult) || !Number.isFinite(timestamp)) {
+      continue;
+    }
+    const analyte =
+      lab.loinc !== "—"
+        ? `loinc:${lab.loinc}`
+        : `name:${lab.name.toLowerCase()}`;
+    const key = `${analyte}|${lab.units}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        name: lab.name,
+        loinc: lab.loinc,
+        units: lab.units,
+        points: [],
+        referenceRanges: [],
+      });
+    }
+    const series = groups.get(key);
+    series.points.push({ timestamp, value: lab.numericResult, date: lab.date });
+    if (
+      Number.isFinite(lab.referenceLow) &&
+      Number.isFinite(lab.referenceHigh)
+    ) {
+      series.referenceRanges.push([lab.referenceLow, lab.referenceHigh]);
+    }
+  }
+
+  return [...groups.values()]
+    .map((series) => {
+      const points = series.points.sort((a, b) => a.timestamp - b.timestamp);
+      const reference = series.referenceRanges[0];
+      const referenceIsConsistent =
+        reference &&
+        series.referenceRanges.every(
+          ([low, high]) => low === reference[0] && high === reference[1],
+        );
+      return {
+        ...series,
+        points,
+        referenceRange: referenceIsConsistent ? reference : null,
+      };
+    })
+    .filter(
+      (series) =>
+        series.points.length >= 2 &&
+        series.points[0].timestamp !== series.points.at(-1).timestamp,
+    );
+}
+
+function TrendChart({ series }) {
+  const width = 640;
+  const height = 286;
+  const plot = { left: 66, right: 20, top: 20, bottom: 48 };
+  const plotWidth = width - plot.left - plot.right;
+  const plotHeight = height - plot.top - plot.bottom;
+  const timestamps = series.points.map((point) => point.timestamp);
+  const values = series.points.map((point) => point.value);
+  const lowValues = series.referenceRange ? [series.referenceRange[0]] : [];
+  const highValues = series.referenceRange ? [series.referenceRange[1]] : [];
+  const rawMin = Math.min(...values, ...lowValues);
+  const rawMax = Math.max(...values, ...highValues);
+  const padding = Math.max(
+    (rawMax - rawMin) * 0.14,
+    Math.abs(rawMax) * 0.04,
+    0.5,
+  );
+  const minValue = rawMin - padding;
+  const maxValue = rawMax + padding;
+  const minTime = timestamps[0];
+  const maxTime = timestamps.at(-1);
+  const x = (time) =>
+    plot.left + ((time - minTime) / (maxTime - minTime)) * plotWidth;
+  const y = (value) =>
+    plot.top + ((maxValue - value) / (maxValue - minValue)) * plotHeight;
+  const path = series.points
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"}${x(point.timestamp)} ${y(point.value)}`,
+    )
+    .join(" ");
+  const ticks = Array.from({ length: 4 }, (_, index) => {
+    const value = maxValue - ((maxValue - minValue) * index) / 3;
+    return { value, position: y(value) };
+  });
+  const dateIndexes =
+    series.points.length > 2
+      ? [
+          ...new Set([
+            0,
+            Math.floor((series.points.length - 1) / 2),
+            series.points.length - 1,
+          ]),
+        ]
+      : [0, series.points.length - 1];
+
+  return (
+    <article className="trend-card">
+      <div className="trend-card-heading">
+        <div>
+          <h4>{series.name}</h4>
+          {series.loinc !== "—" && (
+            <span className="trend-loinc">LOINC {series.loinc}</span>
+          )}
+        </div>
+        <span className="trend-point-count">
+          {series.points.length} results
+        </span>
+      </div>
+      <svg
+        className="trend-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`${series.name} trend over ${series.points.length} dated results, measured in ${series.units}.`}
+      >
+        {series.referenceRange && (
+          <rect
+            x={plot.left}
+            y={y(series.referenceRange[1])}
+            width={plotWidth}
+            height={Math.max(
+              1,
+              y(series.referenceRange[0]) - y(series.referenceRange[1]),
+            )}
+            className="trend-reference-band"
+          />
+        )}
+        {ticks.map((tick) => (
+          <g key={tick.value}>
+            <line
+              x1={plot.left}
+              x2={width - plot.right}
+              y1={tick.position}
+              y2={tick.position}
+              className="trend-gridline"
+            />
+            <text
+              x={plot.left - 10}
+              y={tick.position + 4}
+              className="trend-axis-label"
+              textAnchor="end"
+            >
+              {formatNumber(tick.value)}
+            </text>
+          </g>
+        ))}
+        <path d={path} className="trend-line" />
+        {series.points.map((point, index) => (
+          <g key={`${point.timestamp}-${index}`}>
+            <circle
+              cx={x(point.timestamp)}
+              cy={y(point.value)}
+              r="5"
+              className="trend-point"
+            >
+              <title>{`${formatDate(point.date)}: ${formatNumber(point.value)} ${series.units}`}</title>
+            </circle>
+          </g>
+        ))}
+        {dateIndexes.map((index) => (
+          <text
+            key={index}
+            x={x(series.points[index].timestamp)}
+            y={height - 14}
+            className="trend-axis-label"
+            textAnchor={
+              index === 0
+                ? "start"
+                : index === series.points.length - 1
+                  ? "end"
+                  : "middle"
+            }
+          >
+            {formatAxisDate(series.points[index].date)}
+          </text>
+        ))}
+      </svg>
+      <div className="trend-legend">
+        <span>
+          <i className="legend-line" /> Result
+        </span>
+        <span className="trend-units">Units: {series.units}</span>
+        {series.referenceRange && (
+          <span>
+            <i className="legend-range" /> Reference interval
+          </span>
+        )}
+      </div>
+    </article>
+  );
 }
 
 async function loadAllLabs(fhir) {
@@ -210,6 +433,7 @@ export default function App() {
   }
 
   const patientName = "Epic sandbox patient";
+  const trendSeries = client ? buildTrendSeries(labs) : [];
 
   return (
     <div className="page-shell">
@@ -339,6 +563,46 @@ export default function App() {
               </span>
             )}
           </div>
+          {client && labs.length > 0 && !loading && (
+            <section className="trends-section" aria-labelledby="trends-title">
+              <div className="trends-heading">
+                <div>
+                  <p className="eyebrow">Repeat measurements</p>
+                  <h3 id="trends-title">Trends over time</h3>
+                </div>
+                {trendSeries.length > 0 && (
+                  <span className="trend-summary">
+                    {trendSeries.length} test
+                    {trendSeries.length === 1 ? "" : "s"} with repeat results
+                  </span>
+                )}
+              </div>
+              {trendSeries.length > 0 ? (
+                <div className="trend-grid">
+                  {trendSeries.map((series) => (
+                    <TrendChart
+                      key={`${series.loinc}-${series.name}-${series.units}`}
+                      series={series}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="trend-empty">
+                  <span className="trend-empty-mark" aria-hidden="true">
+                    ⌁
+                  </span>
+                  <div>
+                    <strong>No repeat measurements to chart yet</strong>
+                    <p>
+                      A trend compares the same test on different dates. When
+                      this test account has repeat results for a test, its chart
+                      will appear here. All available results are listed below.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
           {loading && (
             <div className="loading-panel" role="status">
               <span className="spinner" />
