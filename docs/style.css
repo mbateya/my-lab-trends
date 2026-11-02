@@ -1,0 +1,61 @@
+:root {
+  color-scheme: light;
+  --ink: #18323d;
+  --muted: #526a72;
+  --paper: #f5f8f6;
+  --surface: #ffffff;
+  --accent: #126b62;
+  --line: #d7e2de;
+  --notice: #fff4d8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a { color: var(--accent); text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: white;
+  background: var(--ink);
+}
+.skip-link:focus { left: 0.5rem; z-index: 2; }
+
+header, footer { background: var(--surface); }
+.header-inner, .footer-inner, main {
+  width: min(100% - 2rem, 54rem);
+  margin-inline: auto;
+}
+.header-inner { padding-block: 1rem; }
+.brand { color: var(--ink); font-weight: 750; text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; gap: 0.45rem 1.25rem; margin-top: 0.4rem; }
+nav a { font-size: 0.95rem; }
+nav a[aria-current="page"] { font-weight: 700; }
+
+main { min-height: 70vh; padding-block: clamp(2rem, 6vw, 4rem); }
+.eyebrow { color: var(--accent); font-size: 0.82rem; font-weight: 750; letter-spacing: 0.09em; text-transform: uppercase; }
+h1 { max-width: 16ch; margin: 0.25rem 0 1rem; font-size: clamp(2.3rem, 8vw, 4rem); line-height: 1.08; letter-spacing: -0.04em; }
+h2 { margin-top: 2rem; font-size: 1.35rem; line-height: 1.25; }
+.intro { max-width: 42rem; color: var(--muted); font-size: 1.18rem; }
+.notice { margin-block: 1.5rem; padding: 1rem 1.15rem; border-left: 4px solid #bd8412; background: var(--notice); }
+.notice p { margin: 0; }
+.card { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: 0.8rem; background: var(--surface); }
+.card h2 { margin-top: 0; }
+.updated { color: var(--muted); font-size: 0.92rem; }
+footer { border-top: 1px solid var(--line); }
+.footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; padding-block: 1rem; color: var(--muted); font-size: 0.9rem; }
+.footer-inner p { margin: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  a { transition: color 120ms ease; }
+}
