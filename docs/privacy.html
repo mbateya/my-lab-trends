@@ -24,10 +24,11 @@
       <p class="eyebrow">Privacy</p>
       <h1>Privacy Policy</h1>
       <p class="updated">Effective date: November 1, 2026</p>
-      <div class="notice"><p><strong>Do not provide patient information or credentials.</strong> This prototype has no patient-data features and is not intended for real health information.</p></div>
+      <div class="notice"><p><strong>Do not provide real patient information or credentials.</strong> Use only synthetic test accounts and data from the Epic non-production sandbox.</p></div>
       <section>
         <h2>What this project currently does</h2>
-        <p>My Lab Trends is an educational prototype. At this stage, its public website contains static project documentation. The project does not currently offer account creation, forms, analytics, advertising, a patient-data upload, or a SMART on FHIR connection. It does not intentionally collect patient information through the documentation pages.</p>
+        <p>My Lab Trends is an educational prototype. Its app connects in the user's browser to the Epic non-production FHIR R4 sandbox using SMART on FHIR authorization. When connected, it requests the current patient context and laboratory Observations so they can be shown on screen. It has no app backend, database, account system, analytics, advertising, or upload feature.</p>
+        <p>The app keeps laboratory Observation resources in page memory while the app is open and does not separately save those records to browser storage or a database. The fhirclient library uses the browser tab's session storage for OAuth state and the token response, including patient context needed for the active session. The app removes that local SMART session state when you disconnect or reload; it does not send a token-revocation request to Epic. Closing the tab also ends its session storage. Do not use real patient data or production healthcare systems with this prototype.</p>
       </section>
       <section>
         <h2>Hosting and server information</h2>
@@ -35,11 +36,11 @@
       </section>
       <section>
         <h2>Information you should not share</h2>
-        <p>Do not send or post real patient information, protected health information, laboratory results, access tokens, passwords, or other credentials through this project, the repository, or its issue tracker. The prototype does not implement safeguards for receiving or storing such information.</p>
+        <p>Do not send or post real patient information, protected health information, laboratory results, access tokens, passwords, or other credentials through the repository or its issue tracker. The prototype has not been assessed for production handling of health information. Only use the synthetic test accounts and data provided by Epic's non-production sandbox.</p>
       </section>
       <section>
         <h2>Future changes</h2>
-        <p>If the project later adds an application, integrations, or data handling, this policy should be reviewed and updated before those features are made available. This page describes the current documentation-only state, not a promise about future features.</p>
+        <p>This policy describes the current educational prototype and may be updated as its features change. It is not a promise that any particular future feature will be provided.</p>
       </section>
       <section>
         <h2>Contact</h2>
