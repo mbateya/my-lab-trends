@@ -3,7 +3,7 @@ import { authorize, ready } from "fhirclient/browser";
 export const FHIR_BASE_URL =
   "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4/";
 export const REDIRECT_URI = "http://localhost:5173/callback";
-export const SCOPE_VERSION = import.meta.env.VITE_SMART_SCOPE_VERSION || "v2";
+export const SCOPE_VERSION = import.meta.env.VITE_SMART_SCOPE_VERSION || "v1";
 
 const CLIENT_ID = import.meta.env.VITE_EPIC_CLIENT_ID?.trim();
 let authorizationReady;

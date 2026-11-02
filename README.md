@@ -30,7 +30,7 @@ Requirements: Node.js 20.19+ or 22.12+ and npm.
 
 1. Copy `.env.example` to `.env.local`.
 2. Replace `PASTE_YOUR_NON_PRODUCTION_CLIENT_ID_HERE` with your Epic sandbox **public** client ID. Do not add a client secret.
-3. Set `VITE_SMART_SCOPE_VERSION` to `v1` or `v2`, matching the **SMART Scope Version** selected in your Epic app registration. V2 is the default.
+3. Set `VITE_SMART_SCOPE_VERSION` to `v1` or `v2`, matching the **SMART Scope Version** selected in your Epic app registration. V1 is the default.
 4. In the Epic registration, select SMART on FHIR, FHIR R4, patient-facing standalone launch, the matching scope version, and the read/search Labs Observation API. Register this redirect URI exactly: `http://localhost:5173/callback`.
 5. Install dependencies and start Vite:
 
